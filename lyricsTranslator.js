@@ -154,41 +154,56 @@
 가사:
 ${lyrics.map((l, i) => `${i + 1}. ${l}`).join('\n')}`;
 
-        try {
-            const res = await fetch(
-                `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${CONFIG.GEMINI_API_KEY}`,
-                {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        contents: [{ parts: [{ text: prompt }] }],
-                        generationConfig: { temperature: 0.3, maxOutputTokens: 8192 }
-                    })
-                }
-            );
-
-            if (!res.ok) throw new Error(`API ${res.status}`);
-
-            const data = await res.json();
-            const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
-            
-            const translations = {};
-            text.split('\n').forEach(line => {
-                const match = line.match(/^(\d+)\s*[|｜]\s*(.+)$/);
-                if (match) {
-                    const idx = parseInt(match[1]) - 1;
-                    if (idx >= 0 && idx < lyrics.length) {
-                        translations[lyrics[idx]] = match[2].trim();
+        // 최대 3회 재시도 (429 에러 대응)
+        for (let attempt = 0; attempt < 3; attempt++) {
+            try {
+                const res = await fetch(
+                    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${CONFIG.GEMINI_API_KEY}`,
+                    {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            contents: [{ parts: [{ text: prompt }] }],
+                            generationConfig: { temperature: 0.3, maxOutputTokens: 8192 }
+                        })
                     }
-                }
-            });
+                );
 
-            console.log("[가사번역] Gemini 성공:", Object.keys(translations).length, "줄");
-            return translations;
-        } catch (e) {
-            console.error("[가사번역] Gemini 오류:", e.message);
-            return null;
+                // 429 Rate Limit → 대기 후 재시도
+                if (res.status === 429) {
+                    const waitTime = (attempt + 1) * 10000; // 10초, 20초, 30초
+                    console.log(`[가사번역] API 한도 초과, ${waitTime/1000}초 대기...`);
+                    Spicetify.showNotification(`⏳ API 한도 초과, ${waitTime/1000}초 대기...`);
+                    await new Promise(r => setTimeout(r, waitTime));
+                    continue;
+                }
+
+                if (!res.ok) throw new Error(`API ${res.status}`);
+
+                const data = await res.json();
+                const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+                
+                const translations = {};
+                text.split('\n').forEach(line => {
+                    const match = line.match(/^(\d+)\s*[|｜]\s*(.+)$/);
+                    if (match) {
+                        const idx = parseInt(match[1]) - 1;
+                        if (idx >= 0 && idx < lyrics.length) {
+                            translations[lyrics[idx]] = match[2].trim();
+                        }
+                    }
+                });
+
+                console.log("[가사번역] Gemini 성공:", Object.keys(translations).length, "줄");
+                return translations;
+            } catch (e) {
+                console.error("[가사번역] Gemini 오류:", e.message);
+                if (attempt < 2) {
+                    await new Promise(r => setTimeout(r, 5000));
+                }
+            }
         }
+        return null;
     }
 
     // 폴백 번역 (MyMemory)
@@ -498,8 +513,8 @@ ${lyrics.map((l, i) => `${i + 1}. ${l}`).join('\n')}`;
                 if (success % 10 === 0) saveCache();
             }
 
-            // API 레이트 리밋 방지
-            await new Promise(r => setTimeout(r, 500));
+            // API 레이트 리밋 방지 (Gemini 무료 티어 = 분당 15회)
+            await new Promise(r => setTimeout(r, 4000));
         }
 
         isScanning = false;
