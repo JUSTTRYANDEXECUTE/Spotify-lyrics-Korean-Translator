@@ -387,6 +387,23 @@ ${lyrics.map((l, i) => `${i + 1}. ${l}`).join('\n')}`;
     // 플레이리스트 자동 스캔 모드
     let isScanning = false;
     
+    // 가사 패널 열기
+    function openLyricsPanel() {
+        // 방법 1: 가사 버튼 클릭
+        const lyricsBtn = document.querySelector('[data-testid="lyrics-button"]');
+        if (lyricsBtn && !lyricsBtn.classList.contains('active')) {
+            lyricsBtn.click();
+            return true;
+        }
+        // 방법 2: Now Playing Bar의 가사 버튼
+        const npLyricsBtn = document.querySelector('.main-nowPlayingBar-lyricsButton');
+        if (npLyricsBtn) {
+            npLyricsBtn.click();
+            return true;
+        }
+        return false;
+    }
+    
     async function batchTranslatePlaylist() {
         if (!CONFIG.GEMINI_API_KEY) {
             Spicetify.showNotification("Gemini API 키를 먼저 설정하세요");
@@ -410,7 +427,7 @@ ${lyrics.map((l, i) => `${i + 1}. ${l}`).join('\n')}`;
         const wasPlaying = !Spicetify.Player.data?.isPaused;
 
         isScanning = true;
-        Spicetify.showNotification(`${tracks.length}곡 스캔 시작... (다시 클릭하면 중지)`);
+        Spicetify.showNotification(`${tracks.length}곡 스캔 시작... 가사 패널 자동 열림!`);
         
         let success = 0;
         let skipped = 0;
@@ -438,8 +455,12 @@ ${lyrics.map((l, i) => `${i + 1}. ${l}`).join('\n')}`;
                 continue;
             }
 
-            // 가사 로딩 대기 (3초)
-            await new Promise(r => setTimeout(r, 3000));
+            // 가사 패널 열기 시도
+            await new Promise(r => setTimeout(r, 500));
+            openLyricsPanel();
+
+            // 가사 로딩 대기 (4초로 증가)
+            await new Promise(r => setTimeout(r, 4000));
             
             if (!isScanning) break;
 
