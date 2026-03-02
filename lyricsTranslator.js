@@ -1,5 +1,4 @@
 // @ts-check
-// 가사 번역기 v2.0 - 안정화 버전
 
 (async function LyricsTranslator() {
     const CONFIG = { GEMINI_API_KEY: "" };
@@ -390,19 +389,19 @@ ${lyrics.map((l, i) => `${i + 1}. ${l}`).join('\n')}`;
     
     async function batchTranslatePlaylist() {
         if (!CONFIG.GEMINI_API_KEY) {
-            Spicetify.showNotification("⚠️ Gemini API 키를 먼저 설정하세요");
+            Spicetify.showNotification("Gemini API 키를 먼저 설정하세요");
             return;
         }
 
         if (isScanning) {
             isScanning = false;
-            Spicetify.showNotification("🛑 스캔 중지됨");
+            Spicetify.showNotification("스캔 중지됨");
             return;
         }
 
         const tracks = await fetchCurrentPageTracks();
         if (!tracks || tracks.length === 0) {
-            Spicetify.showNotification("⚠️ 플레이리스트/앨범 페이지에서 실행하세요");
+            Spicetify.showNotification("플레이리스트/앨범 페이지에서 실행하세요");
             return;
         }
 
@@ -411,7 +410,7 @@ ${lyrics.map((l, i) => `${i + 1}. ${l}`).join('\n')}`;
         const wasPlaying = !Spicetify.Player.data?.isPaused;
 
         isScanning = true;
-        Spicetify.showNotification(`🔍 ${tracks.length}곡 스캔 시작... (다시 클릭하면 중지)`);
+        Spicetify.showNotification(`${tracks.length}곡 스캔 시작... (다시 클릭하면 중지)`);
         
         let success = 0;
         let skipped = 0;
@@ -430,7 +429,7 @@ ${lyrics.map((l, i) => `${i + 1}. ${l}`).join('\n')}`;
             }
 
             // 진행상황 표시
-            Spicetify.showNotification(`🔍 스캔 중... ${i + 1}/${tracks.length}: ${track.name}`);
+            Spicetify.showNotification(`스캔 중... ${i + 1}/${tracks.length}: ${track.name}`);
 
             // 곡 재생
             try {
@@ -486,7 +485,7 @@ ${lyrics.map((l, i) => `${i + 1}. ${l}`).join('\n')}`;
             } catch(e) {}
         }
 
-        Spicetify.showNotification(`✅ 스캔 완료! 번역: ${success}곡 / 스킵: ${skipped}곡 / 가사없음: ${noLyrics}곡`);
+        Spicetify.showNotification(`스캔 완료! 번역: ${success}곡 / 스킵: ${skipped}곡 / 가사없음: ${noLyrics}곡`);
     }
 
     // 번역 표시
